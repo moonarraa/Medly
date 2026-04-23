@@ -1,0 +1,24 @@
+.env
+.env.*
+
+# Dependencies
+node_modules/
+medly/CLAUDE.md
+
+# Build output
+dist/
+build/
+
+# Prisma generated client
+medly/medly_backend/src/generated/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

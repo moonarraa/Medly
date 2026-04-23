@@ -1,0 +1,327 @@
+// ============================================================
+//  Medly - Prisma Schema
+//  Secure Healthcare Appointment Management System
+//  Author: Tussupbekova Munara (P2773345)
+//  Module: CTEC3451 - Development Project
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+//  ENUMS
+// ============================================================
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  PHARMACIST
+  ADMIN
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum PrescriptionStatus {
+  PENDING
+  DISPENSED
+  CANCELLED
+  EXPIRED
+}
+
+enum NotificationType {
+  APPOINTMENT_CONFIRMATION
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CANCELLATION
+  PRESCRIPTION_READY
+  SYSTEM_ALERT
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  IN_APP
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum ConsentType {
+  DATA_PROCESSING
+  MARKETING_COMMUNICATIONS
+  MEDICAL_RECORD_SHARING
+  THIRD_PARTY_SHARING
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+// ============================================================
+//  USER (Base entity for all roles)
+// ============================================================
+
+model User {
+  user_id       String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  first_name    String
+  last_name     String
+  phone_number  String?
+  role          UserRole
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  deleted_at    DateTime? // GDPR Article 17 - soft delete for right to erasure
+
+  // Role-specific profiles (one-to-one)
+  patient    Patient?
+  doctor     Doctor?
+  pharmacist Pharmacist?
+
+  // Relations
+  notifications Notification[]
+  audit_logs    AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ============================================================
+//  PATIENT
+// ============================================================
+
+model Patient {
+  patient_id     String   @id
+  date_of_birth  DateTime
+  gender         Gender
+  address        String
+  nhs_number     String   @unique
+  medical_notes  String?
+
+  // Relations
+  user             User             @relation(fields: [patient_id], references: [user_id], onDelete: Cascade)
+  appointments     Appointment[]
+  consent_records  ConsentRecord[]
+
+  @@index([nhs_number])
+  @@map("patients")
+}
+
+// ============================================================
+//  DOCTOR
+// ============================================================
+
+model Doctor {
+  doctor_id      String @id
+  specialisation String
+  license_number String @unique
+  department     String
+
+  // Relations
+  user           User          @relation(fields: [doctor_id], references: [user_id], onDelete: Cascade)
+  availabilities Availability[]
+  appointments   Appointment[]
+
+  @@index([specialisation])
+  @@map("doctors")
+}
+
+// ============================================================
+//  PHARMACIST
+// ============================================================
+
+model Pharmacist {
+  pharmacist_id  String @id
+  license_number String @unique
+  pharmacy_name  String
+
+  // Relations
+  user          User           @relation(fields: [pharmacist_id], references: [user_id], onDelete: Cascade)
+  prescriptions Prescription[]
+
+  @@map("pharmacists")
+}
+
+// ============================================================
+//  HOSPITAL
+// ============================================================
+
+model Hospital {
+  hospital_id String @id @default(uuid())
+  name        String
+  address     String
+  phone       String
+
+  @@map("hospitals")
+}
+
+// ============================================================
+//  AVAILABILITY (Doctor's working schedule)
+// ============================================================
+
+model Availability {
+  availability_id String    @id @default(uuid())
+  doctor_id       String
+  day_of_week     DayOfWeek
+  start_time      DateTime  @db.Time
+  end_time        DateTime  @db.Time
+  is_available    Boolean   @default(true)
+
+  // Relations
+  doctor       Doctor        @relation(fields: [doctor_id], references: [doctor_id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([doctor_id])
+  @@map("availabilities")
+}
+
+// ============================================================
+//  APPOINTMENT
+// ============================================================
+
+model Appointment {
+  appointment_id   String            @id @default(uuid())
+  patient_id       String
+  doctor_id        String
+  availability_id  String?
+  appointment_date DateTime          @db.Date
+  start_time       DateTime          @db.Time
+  end_time         DateTime          @db.Time
+  status           AppointmentStatus @default(SCHEDULED)
+  reason           String
+  notes            String?
+  created_at       DateTime          @default(now())
+
+  // Relations
+  patient       Patient        @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctor_id], references: [doctor_id], onDelete: Cascade)
+  availability  Availability?  @relation(fields: [availability_id], references: [availability_id])
+  prescriptions Prescription[]
+  notifications Notification[]
+
+  @@index([patient_id])
+  @@index([doctor_id])
+  @@index([appointment_date])
+  @@index([status])
+  @@map("appointments")
+}
+
+// ============================================================
+//  PRESCRIPTION
+// ============================================================
+
+model Prescription {
+  prescription_id String             @id @default(uuid())
+  appointment_id  String
+  pharmacist_id   String?
+  medication_name String
+  dosage          String
+  instructions    String
+  prescribed_date DateTime           @default(now())
+  status          PrescriptionStatus @default(PENDING)
+
+  // Relations
+  appointment Appointment  @relation(fields: [appointment_id], references: [appointment_id], onDelete: Cascade)
+  pharmacist  Pharmacist?  @relation(fields: [pharmacist_id], references: [pharmacist_id])
+
+  @@index([appointment_id])
+  @@index([status])
+  @@map("prescriptions")
+}
+
+// ============================================================
+//  NOTIFICATION
+// ============================================================
+
+model Notification {
+  notification_id  String              @id @default(uuid())
+  user_id          String
+  appointment_id   String?
+  type             NotificationType
+  channel          NotificationChannel
+  message_content  String
+  sent_at          DateTime            @default(now())
+  delivery_status  DeliveryStatus      @default(PENDING)
+
+  // Relations
+  user        User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointment_id], references: [appointment_id])
+
+  @@index([user_id])
+  @@index([delivery_status])
+  @@map("notifications")
+}
+
+// ============================================================
+//  CONSENT RECORD (GDPR Article 7 - Conditions for Consent)
+// ============================================================
+
+model ConsentRecord {
+  consent_id   String      @id @default(uuid())
+  patient_id   String
+  consent_type ConsentType
+  is_granted   Boolean
+  granted_at   DateTime    @default(now())
+  revoked_at   DateTime?
+  version      String
+
+  // Relations
+  patient Patient @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+
+  @@index([patient_id])
+  @@index([consent_type])
+  @@map("consent_records")
+}
+
+// ============================================================
+//  AUDIT LOG (GDPR Article 30 - Records of processing activities)
+// ============================================================
+
+model AuditLog {
+  log_id      String   @id @default(uuid())
+  user_id     String?
+  action      String
+  entity_type String
+  entity_id   String
+  details     String?
+  ip_address  String
+  timestamp   DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([entity_type])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
