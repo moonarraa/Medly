@@ -304,6 +304,22 @@ model ConsentRecord {
 }
 
 // ============================================================
+//  INVENTORY (Pharmacy stock management)
+// ============================================================
+
+model InventoryItem {
+  item_id           String   @id @default(uuid())
+  medication_name   String
+  strength          String
+  quantity_in_stock Int      @default(0)
+  reorder_threshold Int      @default(20)
+  unit              String   @default("packs")
+  updated_at        DateTime @updatedAt
+
+  @@map("inventory")
+}
+
+// ============================================================
 //  AUDIT LOG (GDPR Article 30 - Records of processing activities)
 // ============================================================
 

@@ -1,125 +1,159 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout.jsx'
-import { auditLogs } from '../../data/mockData.js'
+import { getAuditLogs } from '../../services/api.js'
 
-const EVENT_BADGE = {
-  VIEW_RECORD:             'bg-blue-100 text-blue-700',
-  LOGIN:                   'bg-green-100 text-green-700',
-  CREATE_RECORD:           'bg-teal-100 text-teal-700',
-  LOGIN_FAIL:              'bg-red-100 text-red-600',
-  UPDATE_RECORD:           'bg-orange-100 text-orange-700',
-  EXPORT_DATA:             'bg-yellow-100 text-yellow-700',
-  CREATE_USER:             'bg-purple-100 text-purple-700',
-  APPOINTMENT_CREATED:     'bg-teal-100 text-teal-700',
-  PATIENT_DATA_VIEWED:     'bg-blue-100 text-blue-700',
-  USER_DEACTIVATED:        'bg-gray-100 text-gray-600',
-  PRESCRIPTION_CREATED:    'bg-teal-100 text-teal-700',
-  PRESCRIPTION_DISPENSED:  'bg-green-100 text-green-700',
+const ACTION_BADGE = {
+  LOGIN:                  'bg-green-100 text-green-700',
+  REGISTER:               'bg-teal-100 text-teal-700',
+  BOOK_APPOINTMENT:       'bg-teal-100 text-teal-700',
+  CANCEL_APPOINTMENT:     'bg-orange-100 text-orange-700',
+  CREATE_PRESCRIPTION:    'bg-teal-100 text-teal-700',
+  DISPENSE_PRESCRIPTION:  'bg-green-100 text-green-700',
+  GRANT_CONSENT:          'bg-blue-100 text-blue-700',
+  REVOKE_CONSENT:         'bg-orange-100 text-orange-700',
+  UPDATE_PROFILE:         'bg-yellow-100 text-yellow-700',
+  UPDATE_STOCK:           'bg-purple-100 text-purple-700',
+  ADMIN_UPDATE_USER:      'bg-yellow-100 text-yellow-700',
+  ADMIN_DELETE_USER:      'bg-red-100 text-red-600',
+  APPOINTMENT_COMPLETED:  'bg-green-100 text-green-700',
+  APPOINTMENT_CANCELLED:  'bg-red-100 text-red-600',
+}
+
+function fmtTs(iso) {
+  return new Date(iso).toLocaleString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 export default function AuditLog() {
+  const [logs, setLogs]         = useState([])
+  const [total, setTotal]       = useState(0)
+  const [page, setPage]         = useState(1)
+  const [pages, setPages]       = useState(1)
+  const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
-  const [eventFilter, setEvent] = useState('All event types')
-  const [userFilter, setUser]   = useState('All users')
+  const [actionFilter, setActionFilter] = useState('All')
 
-  const events = [...new Set(auditLogs.map(l => l.event))]
-  const userList = [...new Set(auditLogs.map(l => l.user))]
+  useEffect(() => {
+    setLoading(true)
+    getAuditLogs(page)
+      .then(res => {
+        setLogs(res.data)
+        setTotal(res.total)
+        setPages(res.pages)
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [page])
 
-  const filtered = auditLogs.filter(log => {
-    const matchSearch = log.user.toLowerCase().includes(search.toLowerCase()) ||
-      log.event.toLowerCase().includes(search.toLowerCase()) ||
-      log.resource.toLowerCase().includes(search.toLowerCase())
-    const matchEvent = eventFilter === 'All event types' || log.event === eventFilter
-    const matchUser  = userFilter  === 'All users'       || log.user  === userFilter
-    return matchSearch && matchEvent && matchUser
+  const actions = [...new Set(logs.map(l => l.action))].sort()
+
+  const filtered = logs.filter(log => {
+    const q = search.toLowerCase()
+    const matchSearch =
+      log.user.toLowerCase().includes(q) ||
+      log.action.toLowerCase().includes(q) ||
+      log.entity_type.toLowerCase().includes(q) ||
+      (log.details ?? '').toLowerCase().includes(q)
+    const matchAction = actionFilter === 'All' || log.action === actionFilter
+    return matchSearch && matchAction
   })
 
   return (
     <Layout>
       <div className="flex items-center justify-between mb-6">
         <h1 className="page-title">Audit Log</h1>
-        <button className="btn-outline text-sm">Export CSV</button>
+        <span className="text-sm text-gray-400">{total} total events</span>
       </div>
 
-      {/* GDPR notice */}
       <div className="bg-brand-50 border border-brand-100 rounded-lg px-4 py-3 text-sm text-brand-800 mb-5">
         🔒 Immutable audit trail required by UK GDPR Art. 30. Retained for 6 years.
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-5">
         <input
           className="input max-w-xs"
-          placeholder="Search events..."
+          placeholder="Search user, action, entity…"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
         <select
-          className="input max-w-[180px]"
-          value={eventFilter}
-          onChange={e => setEvent(e.target.value)}
+          className="input max-w-[200px]"
+          value={actionFilter}
+          onChange={e => setActionFilter(e.target.value)}
         >
-          <option>All event types</option>
-          {events.map(e => <option key={e}>{e}</option>)}
-        </select>
-        <select
-          className="input max-w-[160px]"
-          value={userFilter}
-          onChange={e => setUser(e.target.value)}
-        >
-          <option>All users</option>
-          {userList.map(u => <option key={u}>{u}</option>)}
-        </select>
-        <select className="input max-w-[140px]">
-          <option>Last 7 days</option>
-          <option>Last 30 days</option>
-          <option>All time</option>
+          <option value="All">All actions</option>
+          {actions.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100">
-              {['Timestamp', 'User', 'Event', 'Resource', 'IP Address', 'Status'].map(h => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No audit events found.</td>
+      {loading ? (
+        <div className="card p-8 text-center text-gray-400 text-sm">Loading audit log…</div>
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Timestamp', 'User', 'Action', 'Entity', 'Details', 'IP Address'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ) : (
-              filtered.map(log => (
-                <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-4 py-3.5 font-mono text-xs text-gray-500">{log.timestamp}</td>
-                  <td className="px-4 py-3.5 text-gray-700 font-medium">{log.user}</td>
-                  <td className="px-4 py-3.5">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${EVENT_BADGE[log.event] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {log.event}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-gray-600">{log.resource}</td>
-                  <td className="px-4 py-3.5 font-mono text-xs text-gray-500">{log.ip}</td>
-                  <td className="px-4 py-3.5">
-                    <span className={`text-xs font-semibold ${log.status === 'SUCCESS' ? 'text-green-600' : 'text-red-600'}`}>
-                      {log.status}
-                    </span>
-                  </td>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No audit events found.</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                filtered.map(log => (
+                  <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <td className="px-4 py-3.5 font-mono text-xs text-gray-500 whitespace-nowrap">{fmtTs(log.timestamp)}</td>
+                    <td className="px-4 py-3.5 text-gray-700 text-xs max-w-[160px] truncate">{log.user}</td>
+                    <td className="px-4 py-3.5">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${ACTION_BADGE[log.action] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-gray-600 text-xs">{log.entity_type}</td>
+                    <td className="px-4 py-3.5 text-gray-500 text-xs max-w-[180px] truncate">{log.details ?? '—'}</td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-gray-400">{log.ip_address}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      <p className="text-sm text-gray-400 mt-4">
-        Showing {filtered.length} of {auditLogs.length} events – Last 7 days
-      </p>
+      {/* Pagination */}
+      {!loading && pages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-sm text-gray-400">Page {page} of {pages} · {total} events</p>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 rounded border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+            >
+              ‹ Prev
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(pages, p + 1))}
+              disabled={page === pages}
+              className="px-3 py-1.5 rounded border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+            >
+              Next ›
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!loading && pages <= 1 && (
+        <p className="text-sm text-gray-400 mt-4">Showing {filtered.length} of {total} events</p>
+      )}
     </Layout>
   )
 }

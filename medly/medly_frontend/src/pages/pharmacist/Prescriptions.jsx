@@ -1,24 +1,46 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
-import { prescriptions } from '../../data/mockData.js'
+import { getPharmacistQueue, dispensePrescription } from '../../services/api.js'
 
-const STATUS_TABS = ['All', 'Pending', 'Ready', 'Dispensed']
+const TABS = ['All', 'Pending', 'Dispensed']
+
+function fmtDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 export default function PharmacistPrescriptions() {
-  const [tab, setTab]           = useState('Pending')
-  const [dispensedSet, setDispensed] = useState(new Set())
+  const [tab, setTab]                     = useState('Pending')
+  const [prescriptions, setPrescriptions] = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [dispensing, setDispensing]       = useState(null)
+
+  useEffect(() => {
+    getPharmacistQueue()
+      .then(setPrescriptions)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = prescriptions.filter(p => {
-    if (tab === 'All')       return true
-    if (tab === 'Pending')   return p.status === 'PENDING' && !dispensedSet.has(p.id)
-    if (tab === 'Ready')     return p.status === 'READY'
-    if (tab === 'Dispensed') return p.status === 'DISPENSED' || dispensedSet.has(p.id)
+    if (tab === 'Pending')   return p.status === 'PENDING'
+    if (tab === 'Dispensed') return p.status === 'DISPENSED'
     return true
   })
 
-  const handleDispense = (id) => {
-    setDispensed(s => new Set([...s, id]))
+  const handleDispense = async (id) => {
+    setDispensing(id)
+    try {
+      await dispensePrescription(id)
+      setPrescriptions(prev =>
+        prev.map(p => p.id === id ? { ...p, status: 'DISPENSED' } : p)
+      )
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setDispensing(null)
+    }
   }
 
   return (
@@ -26,7 +48,7 @@ export default function PharmacistPrescriptions() {
       <h1 className="page-title mb-6">Prescription Queue</h1>
 
       <div className="flex gap-1 mb-6">
-        {STATUS_TABS.map(t => (
+        {TABS.map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -35,52 +57,60 @@ export default function PharmacistPrescriptions() {
             }`}
           >
             {t}
+            {t === 'Pending' && !loading && (
+              <span className="ml-2 bg-yellow-400 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                {prescriptions.filter(p => p.status === 'PENDING').length}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      <div className="space-y-3">
-        {filtered.length === 0 && (
-          <div className="card p-8 text-center text-gray-400 text-sm">No prescriptions in this category.</div>
-        )}
-        {filtered.map(rx => {
-          const isDispensed = rx.status === 'DISPENSED' || dispensedSet.has(rx.id)
-          return (
+      {loading ? (
+        <div className="card p-8 text-center text-gray-400 text-sm">Loading prescriptions…</div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.length === 0 && (
+            <div className="card p-8 text-center text-gray-400 text-sm">No prescriptions in this category.</div>
+          )}
+          {filtered.map(rx => (
             <div key={rx.id} className="card p-5">
               <div className="flex items-start gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <p className="font-semibold text-gray-900">{rx.patientName}</p>
-                    <StatusBadge status={isDispensed ? 'DISPENSED' : rx.status} />
+                    <p className="font-semibold text-gray-900">{rx.patient.name}</p>
+                    <StatusBadge status={rx.status} />
                   </div>
-                  <p className="text-sm text-gray-600">{rx.medication} {rx.dosage} – {rx.quantity}</p>
+                  <p className="text-sm text-gray-600">
+                    {rx.medication_name} {rx.dosage}
+                  </p>
                   <p className="text-xs text-gray-500 mt-1">{rx.instructions}</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {rx.id} · Prescribed by {rx.prescribedBy} · {rx.prescribedDate}
+                    NHS: {rx.patient.nhs_number} · Prescribed by {rx.doctor} · {fmtDate(rx.prescribed_date)}
                   </p>
-                  {rx.allergies && rx.allergies !== 'None known' && (
-                    <p className="text-xs text-red-600 mt-1 font-medium">⚠ Allergy: {rx.allergies}</p>
-                  )}
                 </div>
-                {!isDispensed && (
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => handleDispense(rx.id)}
-                      className="btn-primary text-xs px-3 py-1.5"
-                    >
-                      Dispense
-                    </button>
-                    <button className="btn-outline text-xs px-3 py-1.5">View</button>
-                  </div>
-                )}
-                {isDispensed && (
+                {rx.status === 'PENDING' ? (
+                  <button
+                    onClick={() => handleDispense(rx.id)}
+                    disabled={dispensing === rx.id}
+                    className="btn-primary text-xs px-3 py-1.5 flex-shrink-0 disabled:opacity-60"
+                  >
+                    {dispensing === rx.id ? 'Processing…' : 'Dispense'}
+                  </button>
+                ) : (
                   <span className="text-xs text-green-600 font-medium flex-shrink-0 mt-1">✓ Dispensed</span>
                 )}
               </div>
             </div>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && (
+        <p className="text-sm text-gray-400 mt-6">
+          Showing {filtered.length} prescription{filtered.length !== 1 ? 's' : ''}
+        </p>
+      )}
     </Layout>
   )
 }

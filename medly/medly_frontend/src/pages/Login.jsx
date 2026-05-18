@@ -10,11 +10,15 @@ export default function Login() {
   const [remember, setRemember] = useState(false)
   const [error, setError]       = useState('')
 
-  const handleSubmit = (e) => {
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     if (!email || !password) { setError('Please enter your email and password.'); return }
-    const result = login(email, password)
+    setLoading(true)
+    const result = await login(email, password)
+    setLoading(false)
     if (result.success) navigate(result.dashboard)
     else setError(result.error)
   }
@@ -79,8 +83,8 @@ export default function Login() {
                 Forgot password?
               </button>
             </div>
-            <button type="submit" className="btn-primary w-full py-3 text-base">
-              Sign In
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base disabled:opacity-60">
+              {loading ? 'Signing in…' : 'Sign In'}
             </button>
           </form>
 
@@ -90,16 +94,6 @@ export default function Login() {
               Register here
             </Link>
           </p>
-
-          {/* Demo hint */}
-          <div className="mt-6 bg-brand-50 border border-brand-100 rounded-lg p-4 text-xs text-brand-800">
-            <p className="font-semibold mb-1">Demo credentials</p>
-            <p>patient@medly.uk → Patient dashboard</p>
-            <p>doctor@medly.uk → Doctor dashboard</p>
-            <p>pharmacist@medly.uk → Pharmacist dashboard</p>
-            <p>admin@medly.uk → Admin dashboard</p>
-            <p className="mt-1 text-brand-600">Any password works.</p>
-          </div>
 
           <p className="mt-6 text-center text-xs text-gray-400 leading-relaxed">
             By signing in you agree to our Privacy Policy and<br />

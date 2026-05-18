@@ -122,6 +122,7 @@ async function main() {
   await prisma.doctor.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.inventoryItem.deleteMany();
 
   // -- Hash the default password once (reused for all users) --
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, SALT_ROUNDS);
@@ -404,7 +405,38 @@ async function main() {
   }
 
   // ========================================================
-  // 11. AUDIT LOGS
+  // 11. INVENTORY
+  // ========================================================
+  console.log("Creating inventory items...");
+  const INVENTORY_ITEMS = [
+    { medication_name: "Paracetamol",     strength: "500mg",    quantity_in_stock: 12,  reorder_threshold: 20, unit: "packs" },
+    { medication_name: "Ibuprofen",       strength: "400mg",    quantity_in_stock: 8,   reorder_threshold: 20, unit: "packs" },
+    { medication_name: "Amoxicillin",     strength: "500mg",    quantity_in_stock: 45,  reorder_threshold: 15, unit: "packs" },
+    { medication_name: "Omeprazole",      strength: "20mg",     quantity_in_stock: 60,  reorder_threshold: 25, unit: "packs" },
+    { medication_name: "Metformin",       strength: "500mg",    quantity_in_stock: 30,  reorder_threshold: 20, unit: "packs" },
+    { medication_name: "Amlodipine",      strength: "5mg",      quantity_in_stock: 22,  reorder_threshold: 15, unit: "packs" },
+    { medication_name: "Salbutamol",      strength: "100mcg",   quantity_in_stock: 27,  reorder_threshold: 20, unit: "inhalers" },
+    { medication_name: "Sertraline",      strength: "50mg",     quantity_in_stock: 18,  reorder_threshold: 15, unit: "packs" },
+    { medication_name: "Atorvastatin",    strength: "20mg",     quantity_in_stock: 50,  reorder_threshold: 20, unit: "packs" },
+    { medication_name: "Cetirizine",      strength: "10mg",     quantity_in_stock: 5,   reorder_threshold: 15, unit: "packs" },
+    { medication_name: "Lisinopril",      strength: "10mg",     quantity_in_stock: 35,  reorder_threshold: 20, unit: "packs" },
+    { medication_name: "Levothyroxine",   strength: "50mcg",    quantity_in_stock: 40,  reorder_threshold: 20, unit: "packs" },
+    { medication_name: "Ramipril",        strength: "5mg",      quantity_in_stock: 14,  reorder_threshold: 15, unit: "packs" },
+    { medication_name: "Lansoprazole",    strength: "30mg",     quantity_in_stock: 55,  reorder_threshold: 25, unit: "packs" },
+    { medication_name: "Bisoprolol",      strength: "5mg",      quantity_in_stock: 25,  reorder_threshold: 20, unit: "packs" },
+    { medication_name: "Clopidogrel",     strength: "75mg",     quantity_in_stock: 9,   reorder_threshold: 15, unit: "packs" },
+    { medication_name: "Fluoxetine",      strength: "20mg",     quantity_in_stock: 33,  reorder_threshold: 20, unit: "packs" },
+    { medication_name: "Codeine",         strength: "30mg",     quantity_in_stock: 10,  reorder_threshold: 10, unit: "packs" },
+    { medication_name: "Doxycycline",     strength: "100mg",    quantity_in_stock: 20,  reorder_threshold: 10, unit: "packs" },
+    { medication_name: "Prednisolone",    strength: "5mg",      quantity_in_stock: 28,  reorder_threshold: 15, unit: "packs" },
+  ];
+
+  for (const item of INVENTORY_ITEMS) {
+    await prisma.inventoryItem.create({ data: item });
+  }
+
+  // ========================================================
+  // 13. AUDIT LOGS
   // ========================================================
   console.log("Creating audit logs...");
   const auditActions = [
@@ -454,6 +486,7 @@ async function main() {
     prescriptions: await prisma.prescription.count(),
     notifications: await prisma.notification.count(),
     consentRecords: await prisma.consentRecord.count(),
+    inventoryItems: await prisma.inventoryItem.count(),
     auditLogs: await prisma.auditLog.count(),
   };
 
@@ -471,6 +504,7 @@ async function main() {
   console.log(`  Prescriptions:   ${counts.prescriptions}`);
   console.log(`  Notifications:   ${counts.notifications}`);
   console.log(`  Consent Records: ${counts.consentRecords}`);
+  console.log(`  Inventory Items: ${counts.inventoryItems}`);
   console.log(`  Audit Logs:      ${counts.auditLogs}`);
   console.log("========================================");
   console.log(`\n  Default login password: ${DEFAULT_PASSWORD}`);

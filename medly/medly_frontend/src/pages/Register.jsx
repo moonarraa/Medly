@@ -14,7 +14,9 @@ export default function Register() {
 
   const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }))
 
-  const handleSubmit = (e) => {
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     if (!consents.terms || !consents.gdpr) {
@@ -25,8 +27,11 @@ export default function Register() {
       setError('Passwords do not match.')
       return
     }
-    const result = register(form)
+    setLoading(true)
+    const result = await register({ ...form, consents })
+    setLoading(false)
     if (result.success) navigate(result.dashboard)
+    else setError(result.error || 'Registration failed. Please try again.')
   }
 
   return (
@@ -130,8 +135,8 @@ export default function Register() {
             ))}
           </div>
 
-          <button type="submit" className="btn-primary w-full py-3 text-base mt-2">
-            Create Account
+          <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base mt-2 disabled:opacity-60">
+            {loading ? 'Creating account…' : 'Create Account'}
           </button>
         </form>
       </div>
