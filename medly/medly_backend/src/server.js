@@ -13,7 +13,9 @@ import pharmacistRoutes from './routes/pharmacists.js'
 
 const app = express()
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174'], credentials: true }))
+const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174']
+if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL)
+app.use(cors({ origin: allowedOrigins, credentials: true }))
 app.use(express.json())
 
 app.use('/api/auth', authRoutes)
