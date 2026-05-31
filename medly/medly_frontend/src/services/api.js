@@ -43,9 +43,22 @@ export const getMyProfile       = ()         => get('/patients/me')
 export const updateMyProfile    = (data)     => put('/patients/me', data)
 export const getMyAppointments  = ()         => get('/patients/me/appointments')
 export const getMyPrescriptions = ()         => get('/patients/me/prescriptions')
-export const getMyConsent       = ()         => get('/patients/me/consent')
-export const grantConsent       = (type)     => post('/patients/me/consent', { consent_type: type, version: '1.0' })
-export const revokeConsent      = (id)       => del(`/patients/me/consent/${id}`)
+export const getMyConsent       = ()              => get('/patients/me/consent')
+export const grantConsent       = (type)          => post('/patients/me/consent', { consent_type: type, version: '1.0' })
+export const revokeConsent      = (id)            => del(`/patients/me/consent/${id}`)
+export const changeMyPassword   = (cur, next)     => put('/patients/me/password', { current_password: cur, new_password: next })
+export const getMyActivity      = ()              => get('/patients/me/activity')
+export const deleteMyAccount    = ()              => del('/patients/me')
+export async function exportMyData() {
+  const res = await fetch(`${BASE}/patients/me/export`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Export failed')
+  }
+  return res.blob()
+}
 
 // Doctors
 export const getDoctors               = ()           => get('/doctors')
@@ -70,6 +83,9 @@ export const getPharmacistQueue   = ()     => get('/prescriptions/queue')
 export const dispensePrescription = (id)   => patch(`/prescriptions/${id}/dispense`, {})
 export const getDoctorPrescriptions = ()   => get('/prescriptions/doctor')
 
+// Pharmacist
+export const getMyPharmacistProfile = () => get('/pharmacists/me')
+
 // Inventory
 export const getInventory  = ()           => get('/inventory')
 export const updateStock   = (id, qty)    => patch(`/inventory/${id}`, { quantity_in_stock: qty })
@@ -88,6 +104,16 @@ export async function exportPrescriptionsPDF() {
 }
 export async function exportOverviewPDF() {
   const res = await fetch(`${BASE}/admin/reports/overview`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Export failed')
+  }
+  return res.blob()
+}
+export async function exportDoctorReportPDF(doctorId) {
+  const res = await fetch(`${BASE}/admin/reports/doctor/${doctorId}`, {
     headers: { Authorization: `Bearer ${getToken()}` },
   })
   if (!res.ok) {

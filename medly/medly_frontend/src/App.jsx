@@ -18,14 +18,17 @@ import PatientRecords    from './pages/doctor/PatientRecords.jsx'
 import DoctorAppts       from './pages/doctor/Appointments.jsx'
 import ApptDetail        from './pages/doctor/AppointmentDetail.jsx'
 import DoctorRx          from './pages/doctor/Prescriptions.jsx'
+import DoctorProfile     from './pages/doctor/Profile.jsx'
 
 import PharmDashboard    from './pages/pharmacist/Dashboard.jsx'
 import PharmRx           from './pages/pharmacist/Prescriptions.jsx'
 import PharmInventory    from './pages/pharmacist/Inventory.jsx'
+import PharmProfile      from './pages/pharmacist/Profile.jsx'
 
 import AdminDashboard    from './pages/admin/Dashboard.jsx'
 import UserManagement    from './pages/admin/UserManagement.jsx'
 import AuditLog          from './pages/admin/AuditLog.jsx'
+import AdminReports      from './pages/admin/Reports.jsx'
 
 import Placeholder from './pages/Placeholder.jsx'
 
@@ -56,20 +59,19 @@ export default function App() {
         <Route path="/doctor/appointments"      element={<P role="DOCTOR"><DoctorAppts /></P>} />
         <Route path="/doctor/appointments/:id"  element={<P role="DOCTOR"><ApptDetail /></P>} />
         <Route path="/doctor/prescriptions"     element={<P role="DOCTOR"><DoctorRx /></P>} />
-        <Route path="/doctor/profile"           element={<P role="DOCTOR"><Placeholder title="Profile" /></P>} />
+        <Route path="/doctor/profile"           element={<P role="DOCTOR"><DoctorProfile /></P>} />
 
         {/* Pharmacist */}
         <Route path="/pharmacist/dashboard"     element={<P role="PHARMACIST"><PharmDashboard /></P>} />
         <Route path="/pharmacist/prescriptions" element={<P role="PHARMACIST"><PharmRx /></P>} />
         <Route path="/pharmacist/inventory"     element={<P role="PHARMACIST"><PharmInventory /></P>} />
-        <Route path="/pharmacist/profile"       element={<P role="PHARMACIST"><Placeholder title="Profile" /></P>} />
+        <Route path="/pharmacist/profile"       element={<P role="PHARMACIST"><PharmProfile /></P>} />
 
         {/* Admin */}
         <Route path="/admin/dashboard"          element={<P role="ADMIN"><AdminDashboard /></P>} />
         <Route path="/admin/users"              element={<P role="ADMIN"><UserManagement /></P>} />
         <Route path="/admin/audit-log"          element={<P role="ADMIN"><AuditLog /></P>} />
-        <Route path="/admin/settings"           element={<P role="ADMIN"><Placeholder title="System Settings" /></P>} />
-        <Route path="/admin/reports"            element={<P role="ADMIN"><Placeholder title="Reports" /></P>} />
+<Route path="/admin/reports"            element={<P role="ADMIN"><AdminReports /></P>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

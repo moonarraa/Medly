@@ -9,6 +9,7 @@ import appointmentRoutes from './routes/appointments.js'
 import prescriptionRoutes from './routes/prescriptions.js'
 import adminRoutes from './routes/admin.js'
 import inventoryRoutes from './routes/inventory.js'
+import pharmacistRoutes from './routes/pharmacists.js'
 
 const app = express()
 
@@ -22,6 +23,7 @@ app.use('/api/appointments', appointmentRoutes)
 app.use('/api/prescriptions', prescriptionRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/inventory', inventoryRoutes)
+app.use('/api/pharmacists', pharmacistRoutes)
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }))
 
@@ -32,6 +34,8 @@ app.use((err, req, res, next) => {
   }
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' })
 })
+
+export default app
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => console.log(`Medly API running on http://localhost:${PORT}`))

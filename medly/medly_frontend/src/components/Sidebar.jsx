@@ -26,7 +26,6 @@ const NAV = {
     { label: 'Dashboard',        to: '/admin/dashboard' },
     { label: 'User Management',  to: '/admin/users' },
     { label: 'Audit Log',        to: '/admin/audit-log' },
-    { label: 'System Settings',  to: '/admin/settings' },
     { label: 'Reports',          to: '/admin/reports' },
   ],
 }

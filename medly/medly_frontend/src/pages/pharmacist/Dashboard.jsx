@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../../components/Layout.jsx'
-import { getPharmacistQueue, dispensePrescription } from '../../services/api.js'
+import { getPharmacistQueue, dispensePrescription, getInventory } from '../../services/api.js'
 
 function fmtDate(iso) {
   if (!iso) return ''
@@ -13,12 +13,16 @@ function fmtDate(iso) {
 
 export default function PharmacistDashboard() {
   const [prescriptions, setPrescriptions] = useState([])
+  const [alertItems, setAlertItems]       = useState([])
   const [loading, setLoading]             = useState(true)
   const [dispensing, setDispensing]       = useState(null)
 
   useEffect(() => {
-    getPharmacistQueue()
-      .then(setPrescriptions)
+    Promise.all([getPharmacistQueue(), getInventory()])
+      .then(([rxs, inv]) => {
+        setPrescriptions(rxs)
+        setAlertItems(inv.filter(i => i.status === 'LOW' || i.status === 'WATCH'))
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
@@ -103,10 +107,35 @@ export default function PharmacistDashboard() {
 
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Stock Alerts</h2>
-        <div className="rounded-lg bg-red-50 border border-red-200 px-5 py-3.5 text-sm text-red-700">
-          ⚠ Low stock: Paracetamol 500mg (12 packs remaining)
-          <p className="text-xs text-red-500 mt-0.5">Reorder threshold: 20 packs</p>
-        </div>
+        {loading ? (
+          <div className="h-14 bg-gray-100 animate-pulse rounded-lg" />
+        ) : alertItems.length === 0 ? (
+          <div className="rounded-lg bg-green-50 border border-green-200 px-5 py-3.5 text-sm text-green-700 font-medium">
+            All stock levels are within safe thresholds.
+          </div>
+        ) : (
+          <div className="card divide-y divide-gray-100">
+            {alertItems.map(item => (
+              <div key={item.id} className="flex items-center justify-between px-5 py-3.5">
+                <div>
+                  <p className={`text-sm font-semibold ${item.status === 'LOW' ? 'text-red-700' : 'text-yellow-700'}`}>
+                    {item.status === 'LOW' ? '⚠' : '!'} {item.medication_name} {item.strength}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {item.quantity_in_stock} {item.unit} remaining · Reorder threshold: {item.reorder_threshold}
+                  </p>
+                </div>
+                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                  item.status === 'LOW'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {item.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Layout>
   )
