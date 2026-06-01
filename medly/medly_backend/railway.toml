@@ -4,5 +4,5 @@ buildCommand = "npm install && npx prisma generate"
 
 [deploy]
 startCommand = "npx prisma migrate deploy && node src/server.js"
-healthcheckPath = "/api/auth/me"
+healthcheckPath = "/health"
 restartPolicyType = "on_failure"
