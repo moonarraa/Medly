@@ -111,6 +111,7 @@ async function main() {
 
   // -- Clear existing data (in dependency order) --
   console.log("Clearing existing data...");
+  await prisma.inventoryItem.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.consentRecord.deleteMany();
@@ -122,7 +123,6 @@ async function main() {
   await prisma.doctor.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.inventoryItem.deleteMany();
 
   // -- Hash the default password once (reused for all users) --
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, SALT_ROUNDS);
